@@ -2,8 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/d-Status-changes" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/d-TSETMC_ID-2-Ticker-map" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/d-Ticker-2-BaseTicker-map" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/d-TSETMC_ID-2-FirmTicker" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/d-status-change" vcs="Git" />
   </component>
 </project>
