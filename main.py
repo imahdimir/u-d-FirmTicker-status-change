@@ -3,16 +3,20 @@
     """
 
 import asyncio
+from functools import partial
 
 import pandas as pd
-from aiohttp import ClientSession
 from githubdata import GithubData
 from mirutil import async_requests as areq
 from mirutil.df_utils import read_data_according_to_type as read_data
 from mirutil.df_utils import save_as_prq_wo_index as sprq
 from mirutil import utils as mu
 from mirutil.jdate import make_zero_padded_jdate_ie_iso_fmt
+from aiohttp import ClientSession
+import nest_asyncio
 
+
+nest_asyncio.apply()
 
 targ_rp_url = 'https://github.com/imahdimir/d-firm-status-change'
 t2f_url = 'https://github.com/imahdimir/d-TSETMC_ID-2-FirmTicker'
@@ -43,6 +47,30 @@ def build_df_for_each_id(id , resp_text) :
 
   return df
 
+async def get_resps_for_none_vals(df , col = 'r') :
+  msk = df[col].isna()
+  _df = df[msk]
+
+  fu = partial(areq.get_reps_texts_async , trust_env = True)
+
+  cls = mu.return_clusters_indices(_df)
+
+  for se in cls :
+    si = se[0]
+    ei = se[1]
+    inds = _df.iloc[si : ei + 1].index
+    print(inds)
+
+    urls = df.loc[inds , url]
+
+    out = await fu(urls)
+
+    df.loc[inds , 'r'] = out
+
+    # break
+
+  return df
+
 def main() :
   pass
   ##
@@ -58,18 +86,15 @@ def main() :
   ##
   dft[url] = dft[tid].apply(make_status_change_url)
   ##
-  cls = mu.return_clusters_indices(dft)
+  dft['r'] = None
   ##
-  for se in cls :
-    print(se)
+  for _ in range(3) :
+    dft = asyncio.run(get_resps_for_none_vals(dft))
 
-    urls = dft.loc[se[0] : se[1] , url]
-
-    out = asyncio.run(areq.get_reps_texts_async(urls))
-    dft.loc[se[0] : se[1] , 'r'] = out
-
-    # break
-
+  ##
+  msk = dft['r'].isna()
+  df1 = dft[msk]
+  len(msk[msk])
   ##
   sdf = pd.DataFrame()
 
