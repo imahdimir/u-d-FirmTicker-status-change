@@ -17,9 +17,9 @@ from mirutil.jdate import make_zero_padded_jdate_ie_iso_fmt
 nest_asyncio.apply()
 
 class GDUrl :
-    trg = 'https://github.com/imahdimir/d-firm-status-change'
+    trg = 'https://github.com/imahdimir/d-0-firm-status-change'
     t2f = 'https://github.com/imahdimir/d-TSETMC_ID-2-FirmTicker'
-    cur = 'https://github.com/imahdimir/u-d-firm-status-change'
+    cur = 'https://github.com/imahdimir/u-d-0-firm-status-change'
 
 gu = GDUrl()
 
