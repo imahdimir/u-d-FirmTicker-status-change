@@ -5,150 +5,146 @@
 import asyncio
 from functools import partial
 
+import nest_asyncio
 import pandas as pd
 from githubdata import GithubData
-from mirutil import async_requests as areq
-from mirutil.df_utils import read_data_according_to_type as read_data
-from mirutil.df_utils import save_as_prq_wo_index as sprq
 from mirutil import utils as mu
+from mirutil.async_requests import get_reps_texts_async
+from mirutil.df_utils import save_as_prq_wo_index as sprq
 from mirutil.jdate import make_zero_padded_jdate_ie_iso_fmt
-from aiohttp import ClientSession
-import nest_asyncio
 
 
 nest_asyncio.apply()
 
-targ_rp_url = 'https://github.com/imahdimir/d-firm-status-change'
-t2f_url = 'https://github.com/imahdimir/d-TSETMC_ID-2-FirmTicker'
+class GDUrl :
+    trg = 'https://github.com/imahdimir/d-firm-status-change'
+    t2f = 'https://github.com/imahdimir/d-TSETMC_ID-2-FirmTicker'
+    cur = 'https://github.com/imahdimir/u-d-firm-status-change'
 
-btic = 'BaseTicker'
-tic = 'Ticker'
-tid = 'TSETMC_ID'
-url = 'url'
-nsta = 'NewStatus'
-time = 'Time'
-jdt = 'JDate'
-row = 'Row'
-jdtime = 'JDateTime'
+gu = GDUrl()
 
-status_chng_burl = 'http://tsetmc.com/Loader.aspx?Partree=15131L&i='
+class ColName :
+    btic = 'BaseTicker'
+    tic = 'Ticker'
+    tid = 'TSETMC_ID'
+    url = 'url'
+    res = 'res'
+    nst = 'NewStatus'
+    t = 'Time'
+    jd = 'JDate'
+    row = 'Row'
+    jdt = 'JDateTime'
 
-def make_status_change_url(tsetmc_id) :
-  return f'{status_chng_burl}{tsetmc_id}'
+c = ColName()
+
+class Constant :
+    burl = 'http://tsetmc.com/Loader.aspx?Partree=15131L&i='
+
+cte = Constant()
+
+fu0 = partial(get_reps_texts_async , trust_env = True)
 
 def build_df_for_each_id(id , resp_text) :
-  dfs = pd.read_html(resp_text)
-
-  assert len(dfs) == 1
-
-  df = dfs[0]
-  df[tid] = id
-  df[row] = df.index
-
-  return df
-
-async def get_resps_for_none_vals(df , col = 'r') :
-  msk = df[col].isna()
-  _df = df[msk]
-
-  fu = partial(areq.get_reps_texts_async , trust_env = True)
-
-  cls = mu.return_clusters_indices(_df)
-
-  for se in cls :
-    si = se[0]
-    ei = se[1]
-    inds = _df.iloc[si : ei + 1].index
-    print(inds)
-
-    urls = df.loc[inds , url]
-
-    out = await fu(urls)
-
-    df.loc[inds , 'r'] = out
-
-    # break
-
-  return df
+    dfs = pd.read_html(resp_text)
+    assert len(dfs) == 1
+    df = dfs[0]
+    df[c.tid] = id
+    df[c.row] = df.index
+    return df
 
 def main() :
-  pass
-  ##
-  rp_t2f = GithubData(t2f_url)
-  rp_t2f.clone()
-  ##
-  dftfp = rp_t2f.data_fp
-  dft = read_data(dftfp)
-  ##
-  dft = dft[[tid]]
-  dft.drop_duplicates(inplace = True)
-  dft.dropna(inplace = True)
-  ##
-  dft[url] = dft[tid].apply(make_status_change_url)
-  ##
-  dft['r'] = None
-  ##
-  for _ in range(3) :
-    dft = asyncio.run(get_resps_for_none_vals(dft))
+    pass
 
-  ##
-  msk = dft['r'].isna()
-  df1 = dft[msk]
-  len(msk[msk])
-  ##
-  sdf = pd.DataFrame()
+    ##
 
-  for _ , _row in dft.iterrows() :
-    _df = build_df_for_each_id(_row[tid] , _row['r'])
-    sdf = pd.concat([sdf , _df])
+    gd_t2f = GithubData(gu.t2f)
+    gd_t2f.overwriting_clone()
+    ##
+    dft = gd_t2f.read_data()
+    ##
+    dft = dft[[c.tid]]
+    dft.drop_duplicates(inplace = True)
+    ##
+    dft.dropna(inplace = True)
+    ##
+    dft[c.url] = cte.burl + dft[c.tid].astype(str)
+    ##
+    dft[c.res] = None
+    df1 = dft.copy()
+    ##
+    while not df1.empty :
+        msk = dft[c.res].isna()
+        df1 = dft[msk]
 
-  ##
-  ren = {
-      'وضعیت جدید' : nsta ,
-      'زمان'       : time ,
-      'تاریخ'      : jdt ,
-      }
+        clus = mu.ret_clusters_indices(df1)
 
-  sdf = sdf.rename(columns = ren)
-  ##
-  sdf[jdt] = sdf[jdt].apply(make_zero_padded_jdate_ie_iso_fmt)
-  ##
-  sdf[jdtime] = sdf[jdt] + ' ' + sdf[time]
-  ##
-  sdf = sdf[[tid , row , jdtime , nsta]]
-  ##
-  sdf.drop_duplicates(inplace = True)
-  ##
-  rp_targ = GithubData(targ_rp_url)
-  rp_targ.clone()
-  ##
-  dffp = rp_targ.data_fp
-  ##
-  sprq(sdf , dffp)
-  ##
-  cur_url = 'https://github.com/imahdimir/b-' + rp_targ.repo_name
-  ##
-  tokfp = '/Users/mahdi/Dropbox/tok.txt'
-  tok = mu.get_tok_if_accessible(tokfp)
-  ##
-  msg = 'updated'
-  msg += ' by: ' + cur_url
+        for se in clus :
+            print(se)
+            si , ei = se
+            inds = df1.iloc[si : ei].index
 
-  rp_targ.commit_and_push(msg , user = rp_targ.user_name , token = tok)
+            urls = dft.loc[inds , c.url]
 
-  ##
+            out = asyncio.run(fu0(urls))
 
-  rp_targ.rmdir()
-  rp_t2f.rmdir()
+            dft.loc[inds , c.res] = out
+
+            # break
+
+        # break
+
+    ##
+    da = pd.DataFrame()
+
+    for _ , ro in dft.iterrows() :
+        _df = build_df_for_each_id(ro[c.tid] , ro[c.res])
+        da = pd.concat([da , _df])
+
+    ##
+    ren = {
+            'وضعیت جدید' : c.nst ,
+            'زمان'       : c.t ,
+            'تاریخ'      : c.jd ,
+            }
+
+    da = da.rename(columns = ren)
+
+    ##
+    da[c.jd] = da[c.jd].apply(make_zero_padded_jdate_ie_iso_fmt)
+    ##
+    da[c.jdt] = da[c.jd] + ' ' + da[c.t]
+    ##
+    da = da[[c.tid , c.row , c.jdt , c.nst]]
+    ##
+    da.drop_duplicates(inplace = True)
+    ##
+    da[c.tid] = da[c.tid].astype(str)
+
+    ##
+
+    gd_trg = GithubData(gu.trg)
+    gd_trg.overwriting_clone()
+    ##
+    dpp = gd_trg.data_fp
+    sprq(da , dpp)
+    ##
+    msg = 'data updated by: '
+    msg += gu.cur
+    ##
+
+    gd_trg.commit_and_push(msg)
+
+    ##
+
+    gd_trg.rmdir()
+    gd_t2f.rmdir()
 
 
-  ##
+    ##
 
 ##
-
-
 if __name__ == '__main__' :
-  main()
+    main()
 
 ##
 
