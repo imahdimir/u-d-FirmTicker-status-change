@@ -11,18 +11,18 @@ from mirutil.utils import ret_clusters_indices
 from mirutil.async_requests import get_reps_texts_async
 from mirutil.df_utils import save_as_prq_wo_index as sprq
 from mirutil.jdate import make_zero_padded_jdate_ie_iso_fmt
-
+from persiantools.jdatetime import JalaliDate
 
 
 class GDUrl :
-    cur = 'https://github.com/imahdimir/u-d-0-firm-status-change'
+    cur = 'https://github.com/imahdimir/u-d-FirmTicker-status-change'
     src = 'https://github.com/imahdimir/d-TSETMC_ID-2-FirmTicker'
     trg0 = 'https://github.com/imahdimir/d-0-FirmTicker-status-change'
+    trg = 'https://github.com/imahdimir/d-FirmTicker-status-change'
 
 gu = GDUrl()
 
 class ColName :
-    btic = 'BaseTicker'
     tic = 'Ticker'
     tid = 'TSETMC_ID'
     url = 'url'
@@ -32,6 +32,10 @@ class ColName :
     jd = 'JDate'
     row = 'Row'
     jdt = 'JDateTime'
+    date = 'Date'
+    iso = 'iso'
+    dt = 'DateTime'
+    ftic = 'FirmTicker'
 
 c = ColName()
 
@@ -55,10 +59,10 @@ def main() :
 
     ##
 
-    gd_t2f = GithubData(gu.src)
-    gd_t2f.overwriting_clone()
+    gd_src = GithubData(gu.src)
+    gd_src.overwriting_clone()
     ##
-    dft = gd_t2f.read_data()
+    dft = gd_src.read_data()
     ##
     dft = dft[[c.tid]]
     dft = dft.drop_duplicates()
@@ -139,11 +143,67 @@ def main() :
 
     ##
 
-    gd_trg0.rmdir()
-    gd_t2f.rmdir()
+
+    ##
+    gd_trg0 = GithubData(gu.trg0)
+    gd_trg0.overwriting_clone()
+    ##
+    dg = gd_trg0.read_data()
+    ##
+    c2s = [c.tid , c.jdt , c.row]
+    dg = dg.sort_values(c2s , ascending = [False , False , True])
+    ##
+    msk = dg.duplicated([c.tid , c.jdt] , keep = False)
+    df1 = dg[msk]
+    len(df1)
+    ##
+    dg = dg.drop_duplicates([c.tid , c.jdt])
+    ##
+    dg[c.jd] = dg[c.jdt].str[:10]
+    ##
+    dg[c.jd] = dg[c.jd].apply(lambda x : JalaliDate.fromisoformat(x))
+    ##
+    dg[c.date] = dg[c.jd].apply(lambda x : x.to_gregorian())
+    ##
+    dg[c.iso] = dg[c.date].astype(str) + dg[c.jdt].str[10 :]
+    ##
+    dg[c.dt] = pd.to_datetime(dg['iso'] , format = '%Y-%m-%dT%H:%M:%S')
+    ##
+    dg = dg[[c.tid , c.jdt , c.dt , c.nst]]
+
+    ##
+    dft = gd_src.read_data()
+    ##
+    dft[c.tid] = dft[c.tid].astype('string')
+    ##
+    dft = dft.set_index(c.tid)
+    ##
+    dg[c.ftic] = dg[c.tid].map(dft[c.ftic])
+    ##
+    dg = dg[[c.ftic , c.jdt , c.dt , c.nst]]
+    ##
+    dg = dg.dropna()
+    ##
+
+    gd_trg = GithubData(gu.trg)
+    gd_trg.overwriting_clone()
+    ##
+    dgp = gd_trg.data_fp
+    sprq(dg , dgp)
+    ##
+
+    msg = 'data updated by: '
+    msg += gu.cur
+    ##
+
+    gd_trg.commit_and_push(msg)
 
     ##
 
+
+    gd_src.rmdir()
+    gd_trg0.rmdir()
+    gd_trg.rmdir()
 
 
     ##
