@@ -5,21 +5,19 @@
 import asyncio
 from functools import partial
 
-import nest_asyncio
 import pandas as pd
 from githubdata import GithubData
-from mirutil import utils as mu
+from mirutil.utils import ret_clusters_indices
 from mirutil.async_requests import get_reps_texts_async
 from mirutil.df_utils import save_as_prq_wo_index as sprq
 from mirutil.jdate import make_zero_padded_jdate_ie_iso_fmt
 
 
-nest_asyncio.apply()
 
 class GDUrl :
-    trg = 'https://github.com/imahdimir/d-0-firm-status-change'
-    t2f = 'https://github.com/imahdimir/d-TSETMC_ID-2-FirmTicker'
     cur = 'https://github.com/imahdimir/u-d-0-firm-status-change'
+    src = 'https://github.com/imahdimir/d-TSETMC_ID-2-FirmTicker'
+    trg0 = 'https://github.com/imahdimir/d-0-FirmTicker-status-change'
 
 gu = GDUrl()
 
@@ -57,15 +55,15 @@ def main() :
 
     ##
 
-    gd_t2f = GithubData(gu.t2f)
+    gd_t2f = GithubData(gu.src)
     gd_t2f.overwriting_clone()
     ##
     dft = gd_t2f.read_data()
     ##
     dft = dft[[c.tid]]
-    dft.drop_duplicates(inplace = True)
+    dft = dft.drop_duplicates()
     ##
-    dft.dropna(inplace = True)
+    dft = dft.dropna()
     ##
     dft[c.url] = cte.burl + dft[c.tid].astype(str)
     ##
@@ -76,7 +74,7 @@ def main() :
         msk = dft[c.res].isna()
         df1 = dft[msk]
 
-        clus = mu.ret_clusters_indices(df1)
+        clus = ret_clusters_indices(df1)
 
         for se in clus :
             print(se)
@@ -108,7 +106,6 @@ def main() :
             }
 
     da = da.rename(columns = ren)
-
     ##
     da[c.jd] = da[c.jd].apply(make_zero_padded_jdate_ie_iso_fmt)
     ##
@@ -118,26 +115,35 @@ def main() :
     ##
     da.drop_duplicates(inplace = True)
     ##
-    da[c.tid] = da[c.tid].astype(str)
+    da[c.tid] = da[c.tid].astype('string')
 
     ##
 
-    gd_trg = GithubData(gu.trg)
-    gd_trg.overwriting_clone()
+    gd_trg0 = GithubData(gu.trg0)
+    gd_trg0.overwriting_clone()
     ##
-    dpp = gd_trg.data_fp
-    sprq(da , dpp)
+    dg = gd_trg0.read_data()
+    ##
+    dg = pd.concat([da , dg])
+    ##
+    dg = dg.drop_duplicates(subset = dg.columns.difference([c.row]))
+    ##
+    dgp = gd_trg0.data_fp
+    sprq(dg , dgp)
     ##
     msg = 'data updated by: '
     msg += gu.cur
     ##
 
-    gd_trg.commit_and_push(msg)
+    gd_trg0.commit_and_push(msg)
 
     ##
 
-    gd_trg.rmdir()
+    gd_trg0.rmdir()
     gd_t2f.rmdir()
+
+    ##
+
 
 
     ##
