@@ -1,5 +1,7 @@
 # python 3.10.5 for arm64
 # arm64 Apple M1
-pandas~=1.4.3
+
+pandas~=1.4.4
 githubdata~=8.2
 mirutil~=4.5
+persiantools~=3.0.1
