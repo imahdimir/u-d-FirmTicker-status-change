@@ -3,6 +3,7 @@
     """
 
 import asyncio
+import json
 from functools import partial
 
 import pandas as pd
@@ -15,10 +16,13 @@ from persiantools.jdatetime import JalaliDate
 
 
 class GDUrl :
-    cur = 'https://github.com/imahdimir/u-d-FirmTicker-status-change'
-    src = 'https://github.com/imahdimir/d-TSETMC_ID-2-FirmTicker'
-    trg0 = 'https://github.com/imahdimir/d-0-FirmTicker-status-change'
-    trg = 'https://github.com/imahdimir/d-FirmTicker-status-change'
+    with open('gdu.json' , 'r') as fi :
+        gj = json.load(fi)
+
+    selff = gj['selff']
+    src = gj['src']
+    trg0 = gj['trg0']
+    trg1 = gj['trg1']
 
 gu = GDUrl()
 
@@ -117,7 +121,7 @@ def main() :
     ##
     da = da[[c.tid , c.row , c.jdt , c.nst]]
     ##
-    da.drop_duplicates(inplace = True)
+    da = da.drop_duplicates()
     ##
     da[c.tid] = da[c.tid].astype('string')
 
@@ -128,24 +132,24 @@ def main() :
     ##
     dg = gd_trg0.read_data()
     ##
+
     dg = pd.concat([da , dg])
     ##
     dg = dg.drop_duplicates(subset = dg.columns.difference([c.row]))
     ##
+
     dgp = gd_trg0.data_fp
     sprq(dg , dgp)
     ##
+
     msg = 'data updated by: '
-    msg += gu.cur
+    msg += gu.selff
     ##
 
     gd_trg0.commit_and_push(msg)
 
     ##
 
-
-    ##
-    gd_trg0 = GithubData(gu.trg0)
     gd_trg0.overwriting_clone()
     ##
     dg = gd_trg0.read_data()
@@ -185,7 +189,7 @@ def main() :
     dg = dg.dropna()
     ##
 
-    gd_trg = GithubData(gu.trg)
+    gd_trg = GithubData(gu.trg1)
     gd_trg.overwriting_clone()
     ##
     dgp = gd_trg.data_fp
@@ -193,7 +197,7 @@ def main() :
     ##
 
     msg = 'data updated by: '
-    msg += gu.cur
+    msg += gu.selff
     ##
 
     gd_trg.commit_and_push(msg)
