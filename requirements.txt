@@ -4,4 +4,3 @@
 pandas~=1.4.4
 githubdata~=8.2
 mirutil~=4.5
-persiantools~=3.0.1
