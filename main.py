@@ -163,19 +163,10 @@ def main() :
     ##
     dg = dg.drop_duplicates([c.tid , c.jdt])
     ##
-    dg[c.jd] = dg[c.jdt].str[:10]
-    ##
-    dg[c.jd] = dg[c.jd].apply(lambda x : JalaliDate.fromisoformat(x))
-    ##
-    dg[c.date] = dg[c.jd].apply(lambda x : x.to_gregorian())
-    ##
-    dg[c.iso] = dg[c.date].astype(str) + dg[c.jdt].str[10 :]
-    ##
-    dg[c.dt] = pd.to_datetime(dg['iso'] , format = '%Y-%m-%dT%H:%M:%S')
-    ##
-    dg = dg[[c.tid , c.jdt , c.dt , c.nst]]
+    dg = dg[[c.tid , c.jdt , c.nst]]
 
     ##
+
     dft = gd_src.read_data()
     ##
     dft[c.tid] = dft[c.tid].astype('string')
@@ -184,7 +175,7 @@ def main() :
     ##
     dg[c.ftic] = dg[c.tid].map(dft[c.ftic])
     ##
-    dg = dg[[c.ftic , c.jdt , c.dt , c.nst]]
+    dg = dg[[c.ftic , c.jdt , c.nst]]
     ##
     dg = dg.dropna()
     ##
